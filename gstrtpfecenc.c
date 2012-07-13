@@ -224,7 +224,7 @@ static GstFlowReturn gst_rtp_fec_enc_chain(GstPad *pad, GstBuffer *packet)
 	GstFlowReturn ret;
 	guint16 seqnum;
 
-	rtp_fec_enc = GST_RTP_FEC_ENC(GST_PAD_PARENT(pad));
+	rtp_fec_enc = GST_RTP_FEC_ENC(gst_pad_get_parent(pad));
 
 	seqnum = gst_rtp_buffer_get_seq(packet);
 	GST_DEBUG_OBJECT(rtp_fec_enc, "received RTP packet, seqnum %u", seqnum);
@@ -249,6 +249,8 @@ static GstFlowReturn gst_rtp_fec_enc_chain(GstPad *pad, GstBuffer *packet)
 	/* Finally, push the media packet to the src pad */
 	ret = gst_pad_push(rtp_fec_enc->srcpad, packet);
 
+	gst_object_unref(rtp_fec_enc);
+
 	return ret;
 }
 
@@ -268,7 +270,7 @@ static gboolean gst_rtp_fec_enc_setcaps(GstPad *pad, GstCaps *caps)
 	to the fec pad caps, and then sets the src pad caps.
 	*/
 
-	rtp_fec_enc = GST_RTP_FEC_ENC(GST_PAD_PARENT(pad));
+	rtp_fec_enc = GST_RTP_FEC_ENC(gst_pad_get_parent(pad));
 
 	/* Retrieve the caps structure */
 	str = gst_caps_get_structure(caps, 0);
@@ -304,13 +306,19 @@ static gboolean gst_rtp_fec_enc_setcaps(GstPad *pad, GstCaps *caps)
 	/* Finally, do the regular src pad setcaps */
 	res = gst_pad_set_caps(rtp_fec_enc->srcpad, caps);
 
+	gst_object_unref(rtp_fec_enc);
+
 	return res;
 }
 
 
 static void gst_rtp_fec_enc_set_property(GObject *object, guint prop_id, GValue const *value, GParamSpec *pspec)
 {
-	GstRtpFECEnc *rtp_fec_enc = GST_RTP_FEC_ENC(object);
+	GstRtpFECEnc *rtp_fec_enc;
+
+	GST_OBJECT_LOCK(object);
+
+	rtp_fec_enc = GST_RTP_FEC_ENC(object);
 
 	switch (prop_id)
 	{
@@ -339,12 +347,18 @@ static void gst_rtp_fec_enc_set_property(GObject *object, guint prop_id, GValue 
 			G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 			break;
 	}
+
+	GST_OBJECT_UNLOCK(object);
 }
 
 
 static void gst_rtp_fec_enc_get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
 {
-	GstRtpFECEnc *rtp_fec_enc = GST_RTP_FEC_ENC(object);
+	GstRtpFECEnc *rtp_fec_enc;
+
+	GST_OBJECT_LOCK(object);
+
+	rtp_fec_enc = GST_RTP_FEC_ENC(object);
 
 	switch (prop_id)
 	{
@@ -361,6 +375,8 @@ static void gst_rtp_fec_enc_get_property(GObject *object, guint prop_id, GValue 
 			G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 			break;
 	}
+
+	GST_OBJECT_UNLOCK(object);
 }
 
 
