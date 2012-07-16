@@ -78,6 +78,9 @@ static GstFlowReturn gst_rtp_fec_dec_chain_fec(GstPad *pad, GstBuffer *packet);
 static void gst_rtp_fec_dec_set_property(GObject *object, guint prop_id, GValue const *value, GParamSpec *pspec);
 static void gst_rtp_fec_dec_get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec);
 
+/* Called when a packet is about to be recovered and needs a buffer */
+static GstBuffer* gst_rtp_fec_dec_create_recovered_buffer(guint const size_in_bytes, void *data);
+
 /* Called when the pipeline state changes */
 static GstStateChangeReturn gst_rtp_fec_dec_change_state(GstElement *element, GstStateChange transition);
 
@@ -213,7 +216,7 @@ static void gst_rtp_fec_dec_init(GstRtpFECDec *rtp_fec_dec, GstRtpFECDecClass *k
 	rtp_fec_dec->mutex = g_mutex_new();
 
 	/* Finally, create the FEC decoder */
-	rtp_fec_dec->dec = fec_dec_create(DEFAULT_NUM_MEDIA_PACKETS, DEFAULT_NUM_FEC_PACKETS);
+	rtp_fec_dec->dec = fec_dec_create(DEFAULT_NUM_MEDIA_PACKETS, DEFAULT_NUM_FEC_PACKETS, gst_rtp_fec_dec_create_recovered_buffer, rtp_fec_dec);
 }
 
 
@@ -374,6 +377,30 @@ static void gst_rtp_fec_dec_get_property(GObject *object, guint prop_id, GValue 
 	}
 
 	GST_OBJECT_UNLOCK(object);
+}
+
+
+static GstBuffer* gst_rtp_fec_dec_create_recovered_buffer(guint const size_in_bytes, void *data)
+{
+	GstRtpFECDec *rtp_fec_dec;
+	GstBuffer *buffer;
+	GstFlowReturn ret;
+	
+	rtp_fec_dec = (GstRtpFECDec*)data;
+
+	ret = gst_pad_alloc_buffer(rtp_fec_dec->srcpad, 0, size_in_bytes, GST_PAD_CAPS(rtp_fec_dec->srcpad), &buffer);
+	if (ret != GST_FLOW_OK)
+	{
+		buffer = gst_buffer_new_and_alloc(size_in_bytes);
+		gst_buffer_set_caps(buffer, GST_PAD_CAPS(rtp_fec_dec->srcpad));
+		GST_DEBUG_OBJECT(rtp_fec_dec, "Created new buffer with %u bytes for recovered packet using gst_buffer_new_and_alloc()", size_in_bytes);
+	}
+	else
+	{
+		GST_DEBUG_OBJECT(rtp_fec_dec, "Created new buffer with %u bytes for recovered packet", size_in_bytes);
+	}
+
+	return buffer;
 }
 
 

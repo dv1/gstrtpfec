@@ -29,9 +29,10 @@
 
 struct fec_dec_s;
 typedef struct fec_dec_s fec_dec;
+typedef GstBuffer* (*create_buffer_function)(guint const size_in_bytes, void *data);
 
 
-fec_dec* fec_dec_create(guint const num_media_packets, guint const num_fec_packets);
+fec_dec* fec_dec_create(guint const num_media_packets, guint const num_fec_packets, create_buffer_function const create_buffer, void *create_buffer_data);
 void fec_dec_destroy(fec_dec *dec);
 
 void fec_dec_push_media_packet(fec_dec *dec, GstBuffer *packet);

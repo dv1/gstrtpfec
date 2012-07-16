@@ -34,7 +34,11 @@ struct fec_dec_s
 {
 	guint num_media_packets;
 	guint num_fec_packets;
+
 	guint max_packet_size;
+
+	create_buffer_function create_buffer;
+	void *create_buffer_data;
 
 	guint cur_snbase, blacklisted_snbase;
 	gboolean has_snbase;
@@ -62,13 +66,15 @@ static void fec_dec_recover_packets(fec_dec *dec);
 
 
 
-fec_dec* fec_dec_create(guint const num_media_packets, guint const num_fec_packets)
+fec_dec* fec_dec_create(guint const num_media_packets, guint const num_fec_packets, create_buffer_function const create_buffer, void *create_buffer_data)
 {
 	fec_dec *dec = malloc(sizeof(fec_dec));
 
 	dec->num_media_packets = num_media_packets;
 	dec->num_fec_packets = num_fec_packets;
 	dec->max_packet_size = 0;
+	dec->create_buffer = create_buffer;
+	dec->create_buffer_data = create_buffer_data;
 	dec->cur_snbase = 0;
 	dec->blacklisted_snbase = 0;
 	dec->has_snbase = FALSE;
@@ -154,7 +160,7 @@ static void* fec_dec_source_packet_cb(void *context, UINT32 size, UINT32 esi)
 	esi = esi; /* shut up compiler warning about unused argument */
 	
 	dec = context;
-	packet = gst_buffer_new_and_alloc(size);
+	packet = dec->create_buffer(size, dec->create_buffer_data);
 	g_queue_push_tail(dec->recovered_packets, packet);
 
 	return GST_BUFFER_DATA(packet);
