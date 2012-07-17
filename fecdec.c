@@ -66,6 +66,13 @@ static void fec_dec_recover_packets(fec_dec *dec);
 
 
 
+static void custom_hash_table_add(GHashTable *hash_table, gpointer key)
+{
+	g_hash_table_replace(hash_table, key, key);
+}
+
+
+
 fec_dec* fec_dec_create(guint const num_media_packets, guint const num_fec_packets, create_buffer_function const create_buffer, void *create_buffer_data)
 {
 	fec_dec *dec = malloc(sizeof(fec_dec));
@@ -296,13 +303,13 @@ void fec_dec_push_media_packet(fec_dec *dec, GstBuffer *packet)
 
 			GST_DEBUG("Pushing media packet with seqnum %u, no current snbase set", original_seqnum);
 			g_queue_push_tail(dec->media_packets, gst_buffer_ref(packet));
-			g_hash_table_add(dec->media_packet_set, GINT_TO_POINTER(original_seqnum));
+			custom_hash_table_add(dec->media_packet_set, GINT_TO_POINTER(original_seqnum));
 			++dec->num_received_media_packets;
 		}
 		else if ((corrected_seqnum >= (guint32)(dec->cur_snbase)) && (corrected_seqnum <= ((guint32)(dec->cur_snbase) + ((guint32)(dec->num_media_packets)) - 1)))
 		{
 			g_queue_push_tail(dec->media_packets, gst_buffer_ref(packet));
-			g_hash_table_add(dec->media_packet_set, GINT_TO_POINTER(original_seqnum));
+			custom_hash_table_add(dec->media_packet_set, GINT_TO_POINTER(original_seqnum));
 			++dec->num_received_media_packets;
 			dec->received_media_packet_mask |= (1ul << (corrected_seqnum - dec->cur_snbase));
 			dec->max_packet_size = MAX(dec->max_packet_size, GST_BUFFER_SIZE(packet));
@@ -318,7 +325,7 @@ void fec_dec_push_media_packet(fec_dec *dec, GstBuffer *packet)
 	{
 		GST_DEBUG("Pushing media packet with seqnum %u, no current snbase set", original_seqnum);
 		g_queue_push_tail(dec->media_packets, gst_buffer_ref(packet));
-		g_hash_table_add(dec->media_packet_set, GINT_TO_POINTER(original_seqnum));
+		custom_hash_table_add(dec->media_packet_set, GINT_TO_POINTER(original_seqnum));
 		++dec->num_received_media_packets;
 	}
 
@@ -385,7 +392,7 @@ void fec_dec_push_fec_packet(fec_dec *dec, GstBuffer *packet)
 	dec->num_received_media_packets = 0;
 	dec->max_packet_size = 0;
 	g_queue_push_tail(dec->fec_packets, gst_buffer_ref(packet));
-	g_hash_table_add(dec->fec_packet_set, GINT_TO_POINTER(seqnum));
+	custom_hash_table_add(dec->fec_packet_set, GINT_TO_POINTER(seqnum));
 	++dec->num_received_fec_packets;
 
 	for (link = g_queue_peek_head_link(dec->media_packets); link != NULL;)
